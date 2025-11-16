@@ -1,0 +1,13 @@
+# ML Model files (too large for git)
+*.h5
+*.pkl
+ml_models/*.h5
+ml_models/*.pkl
+
+# Python
+__pycache__/
+*.py[cod]
+*.so
+.Python
+env/
+venv/
