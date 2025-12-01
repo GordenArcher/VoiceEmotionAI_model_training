@@ -168,3 +168,12 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+
+# --- Contributors (added for coursework/assignments) ---
+# This small setting documents who contributed which parts for the lecturer review.
+# Edited by: Forson Odonkor <forson.odonkor@example.com>
+CONTRIBUTORS = [
+    "Gorden Archer <gorden.archer@example.com> - Project lead; backend & model integration",
+    "Forson Odonkor <forson.odonkor@example.com> - Data preprocessing & model evaluation",
+]
