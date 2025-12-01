@@ -9,7 +9,7 @@ from .helper.response import _generate_response
 User = get_user_model()
 from rest_framework.parsers import MultiPartParser, FormParser
 from django.shortcuts import get_object_or_404
-from django.contrib.auth.hashers import check_password
+# use User.check_password() for verifying passwords
 import os
 from .utils.model_loader import EmotionRecognitionModel
 from .models import VoiceRecording, EmotionAnalysis, AIResponse, UserProfile
@@ -116,10 +116,11 @@ def login_view(request):
         }, status=status.HTTP_400_BAD_REQUEST) 
         
 
-    if not check_password(password, user.password):
+    # prefer the model's built-in check_password which handles hashing
+    if not user.check_password(password):
         return Response({
             "status": "error",
-            "message": "Invalid credentials. Please try agian"
+            "message": "Invalid credentials. Please try again"
         }, status=status.HTTP_400_BAD_REQUEST)
         
 
@@ -695,3 +696,20 @@ def get_ai_response(request, response_id):
 
 
 # ngrok http 8000/
+
+
+@api_view(['GET'])
+@authentication_classes([])
+@permission_classes([])
+def health_check(request):
+    """Light-weight health check for uptime and model availability."""
+    try:
+        model = EmotionRecognitionModel()
+        model_ready = bool(getattr(model, '_model', None) and getattr(model, '_scaler', None) and getattr(model, '_label_encoder', None))
+    except Exception:
+        model_ready = False
+
+    return Response({
+        'status': 'ok',
+        'model_ready': model_ready
+    }, status=status.HTTP_200_OK)

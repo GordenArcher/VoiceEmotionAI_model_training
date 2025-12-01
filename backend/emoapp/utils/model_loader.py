@@ -28,20 +28,38 @@ class EmotionRecognitionModel:
             model_path = os.path.join(settings.BASE_DIR, 'ml_models', 'emotion_recognition_model.h5')
             scaler_path = os.path.join(settings.BASE_DIR, 'ml_models', 'scaler.pkl')
             encoder_path = os.path.join(settings.BASE_DIR, 'ml_models', 'label_encoder.pkl')
-            
-            self._model = keras.models.load_model(model_path)
-            
-            with open(scaler_path, 'rb') as f:
-                self._scaler = pickle.load(f)
-            
-            with open(encoder_path, 'rb') as f:
-                self._label_encoder = pickle.load(f)
-            
-            print("✓ Emotion recognition model loaded successfully")
-        
+
+            if not os.path.exists(model_path):
+                logger.error("Model file not found at %s", model_path)
+                self._model = None
+            else:
+                self._model = keras.models.load_model(model_path)
+
+            if os.path.exists(scaler_path):
+                with open(scaler_path, 'rb') as f:
+                    self._scaler = pickle.load(f)
+            else:
+                logger.warning("Scaler not found at %s", scaler_path)
+                self._scaler = None
+
+            if os.path.exists(encoder_path):
+                with open(encoder_path, 'rb') as f:
+                    self._label_encoder = pickle.load(f)
+            else:
+                logger.warning("Label encoder not found at %s", encoder_path)
+                self._label_encoder = None
+
+            if self._model is not None and self._scaler is not None and self._label_encoder is not None:
+                logger.info("Emotion recognition model and artifacts loaded successfully")
+            else:
+                logger.warning("Emotion recognition model partially loaded or missing artifacts; predictions will be disabled until the artifacts are available.")
+
         except Exception as e:
-            print(f"Error loading model: {str(e)}")
-            raise
+            logger.exception("Unexpected error while loading model: %s", e)
+            # Do not re-raise: keep service running and allow graceful degradation
+            self._model = None
+            self._scaler = None
+            self._label_encoder = None
     
     def extract_features(self, file_path, sr=22050, duration=3):
         """
@@ -96,29 +114,38 @@ class EmotionRecognitionModel:
     
     def predict(self, file_path):
         """Predict emotion from audio file"""
+        # Ensure model and preprocessing artifacts are available
+        if self._model is None or self._scaler is None or self._label_encoder is None:
+            logger.warning("Prediction requested but model or artifacts are not loaded; returning None")
+            return None
+
         features = self.extract_features(file_path)
-        
+
         if features is None:
             return None
-        
+
         # Preprocess
-        features = features.reshape(1, -1)
-        features_scaled = self._scaler.transform(features)
-        
-        # Predict
-        prediction = self._model.predict(features_scaled, verbose=0)
-        predicted_class = np.argmax(prediction, axis=1)[0]
-        predicted_emotion = self._label_encoder.inverse_transform([predicted_class])[0]
-        confidence = float(prediction[0][predicted_class] * 100)
-        
-        # Get all probabilities
-        probabilities = {
-            self._label_encoder.classes_[i]: float(prediction[0][i] * 100)
-            for i in range(len(self._label_encoder.classes_))
-        }
-        
-        return {
-            'emotion': predicted_emotion,
-            'confidence': confidence,
-            'probabilities': probabilities
-        }
+        try:
+            features = features.reshape(1, -1)
+            features_scaled = self._scaler.transform(features)
+
+            # Predict
+            prediction = self._model.predict(features_scaled, verbose=0)
+            predicted_class = np.argmax(prediction, axis=1)[0]
+            predicted_emotion = self._label_encoder.inverse_transform([predicted_class])[0]
+            confidence = float(prediction[0][predicted_class] * 100)
+
+            # Get all probabilities
+            probabilities = {
+                self._label_encoder.classes_[i]: float(prediction[0][i] * 100)
+                for i in range(len(self._label_encoder.classes_))
+            }
+
+            return {
+                'emotion': predicted_emotion,
+                'confidence': confidence,
+                'probabilities': probabilities
+            }
+        except Exception:
+            logger.exception("Error during prediction")
+            return None

@@ -32,5 +32,5 @@ urlpatterns = [
     path('ai-responses/<int:response_id>/', views.get_ai_response, name='get-ai-response'),
 
     # Optional: health check
-    # path('health/', views.health_check, name='health_check'),
+    path('health/', views.health_check, name='health_check'),
 ]

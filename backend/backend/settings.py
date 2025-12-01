@@ -22,10 +22,11 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-zobt5=gw$otjlxm!!$w+qvu&fouv(e^s81vz*c7&z2o%p-8*hf'
+# Read secret key and debug flag from environment for safer deployments
+SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'django-insecure-zobt5=gw$otjlxm!!$w+qvu&fouv(e^s81vz*c7&z2o%p-8*hf')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv('DJANGO_DEBUG', 'True').lower() in ('1', 'true', 'yes')
 
 ALLOWED_HOSTS = ["*", "192.168.8.103",
                  "https://4ad348c69eb9.ngrok-free.app", 'localhost']
@@ -76,8 +77,6 @@ SIMPLE_JWT = {
     'AUTH_HEADER_TYPES': ('Bearer',),
 }
 
-CORS_ALLOW_ALL_ORIGINS = True
-
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:19000",
     "http://localhost:8081",
@@ -85,6 +84,10 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:8081",
     "https://4ad348c69eb9.ngrok-free.app"
 ]
+
+# In development allow all origins for convenience; in production rely on the
+# explicit whitelist above. Controlled by DEBUG env var.
+CORS_ALLOW_ALL_ORIGINS = DEBUG
 
 CORS_ALLOW_HEADERS = [
     'authorization',
